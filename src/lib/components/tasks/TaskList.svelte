@@ -1,51 +1,57 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import {API_HOST} from "../../config"
+  import AddTasks from "./AddTasks.svelte";
 
   interface Task {
-    _id: string;
+    id: number;
     title: string;
     completed: boolean;
   }
 
-  let tasks: Task[] = [];
-  let loading = true;
-  let error: string | null = null;
+  let tasks: Task[] = [
+    { id: 1, title: "Learn Svelte", completed: false },
+    { id: 2, title: "Build Task App", completed: true }
+  ];
 
-  onMount(async () => {
-    try {
-      const res = await fetch(`${API_HOST}/tasks`);
-      if (!res.ok) throw new Error("Failed to fetch tasks");
-      tasks = await res.json();
-    } catch (err: any) {
-      error = err.message;
-    } finally {
-      loading = false;
-    }
-  });
+  let showAddModal = false;
+
+  function handleAdd(event: CustomEvent) {
+    tasks = [...tasks, { id: Date.now(), ...event.detail }];
+  }
+
+  function openAddModal() {
+    showAddModal = true;
+  }
+
+  function closeAddModal() {
+    showAddModal = false;
+  }
 </script>
 
 <div class="p-6">
   <h2 class="text-2xl font-bold mb-4">Tasks</h2>
 
-  {#if loading}
-    <p>Loading tasks...</p>
-  {:else if error}
-    <p class="text-red-500">{error}</p>
-  {:else if tasks.length === 0}
-    <p>No tasks found.</p>
-  {:else}
-    <ul class="space-y-2">
-      {#each tasks as task}
-        <li class="p-3 bg-white dark:bg-gray-800 rounded shadow flex justify-between items-center">
-          <span class={task.completed ? "line-through text-gray-500" : ""}>
-            {task.title}
-          </span>
-          <span class="text-sm text-gray-400">
-            {task.completed ? "✅ Done" : "⏳ Pending"}
-          </span>
-        </li>
-      {/each}
-    </ul>
-  {/if}
+  <button
+    class="mb-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+    on:click={openAddModal}
+  >
+    + Add Task
+  </button>
+
+  <AddTasks
+    isOpen={showAddModal}
+    on:add={handleAdd}
+    on:close={closeAddModal}
+  />
+
+  <ul class="space-y-2">
+    {#each tasks as task}
+      <li
+        class="p-3 bg-white dark:bg-gray-800 rounded shadow flex justify-between items-center"
+      >
+        <span class={task.completed ? "line-through text-gray-500" : ""}>
+          {task.title}
+        </span>
+      </li>
+    {/each}
+  </ul>
 </div>
