@@ -1,32 +1,29 @@
-<script lang="ts"> 
+<script lang="ts">
   import { onMount } from "svelte";
-  import { getTasks, updateTask } from "$lib/services/taskservices";
-  import type { Task } from "$lib/models/task";
+  import { tasks, loading, loadTasks, toggleCompleted } from "$lib/stores/taskStore";
   import AddTask from "./AddTask.svelte";
+  import type { Task } from "$lib/models/task";
 
-  let tasks: Task[] = [];
-  let loading = true;
+  import { Button } from "$lib/components/ui/button";
+  import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "$lib/components/ui/dialog";
+  import { Checkbox } from "$lib/components/ui/checkbox";
+  import { Card, CardHeader, CardTitle, CardContent } from "$lib/components/ui/card";
+  import { Badge } from "$lib/components/ui/badge";
+
   let showAddTask = false;
   let editingTask: Task | null = null;
 
-  onMount(async () => {
-    try {
-      tasks = await getTasks();
-      console.log("Tasks loaded:", tasks);
-    } catch (e) {
-      console.error("Failed to fetch tasks", e);
-    } finally {
-      loading = false;
-    }
+  onMount(() => {
+    loadTasks(); // fetch tasks from backend
   });
 
   function openAddModal() {
-    editingTask = null; 
+    editingTask = null;
     showAddTask = true;
   }
 
   function openEditModal(task: Task) {
-    editingTask = task;  
+    editingTask = task;
     showAddTask = true;
   }
 
@@ -36,84 +33,78 @@
   }
 
   function handleTaskAdded(event: CustomEvent<Task>) {
-    tasks = [...tasks, event.detail];
+    tasks.update(current => [...current, event.detail]);
+    showAddTask = false;
   }
 
   function handleTaskUpdated(event: CustomEvent<Task>) {
     const updated = event.detail;
-    tasks = tasks.map(t => (t._id === updated._id ? updated : t));
-  }
-
-  async function toggleCompleted(task: Task) {
-    const originalStatus = task.completed;
-    task.completed = !originalStatus;
-
-    tasks = [...tasks];
-    try {
-      await updateTask(task._id, { completed: task.completed });
-    } catch (err) {
-      task.completed = originalStatus;
-      tasks = [...tasks];
-      console.error("Failed to update task", err);
-    }
+    tasks.update(current => current.map(t => t._id === updated._id ? updated : t));
+    showAddTask = false;
   }
 </script>
 
-<div class={`content-wrapper`}>
-  <h1 class="text-2xl font-bold mb-4">Task Manager</h1>
+<div class="space-y-6">
+  <h1 class="text-2xl font-bold">Task Manager</h1>
 
-  <button
-    class="mb-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-    on:click={openAddModal}
-  >
-    + Add Task
-  </button>
+  <!-- Add Task Button + Modal -->
+  <Dialog open={showAddTask} onOpenChange={(open) => showAddTask = open}>
+  <DialogTrigger>
+    <Button class="bg-green-500 hover:bg-green-600">+ Add Task</Button>
+  </DialogTrigger>
 
-  {#if loading}
-    <p>loading tasks...</p>
-  {:else if tasks.length === 0}
-    <p>No tasks found.</p>
-  {:else}
-    <ul class="space-y-2">
-      {#each tasks as task (task._id)}
-        <li class="p-3 bg-white dark:bg-gray-800 rounded shadow flex justify-between items-center">
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={task.completed}
-              on:change={() => toggleCompleted(task)}
-              class="w-5 h-5"
-            />
-            <span class={task.completed ? "line-through text-gray-500" : ""}>
-              {task.title}
-            </span>
-          </label>
+  <DialogContent class="p-6 rounded-lg shadow-lg w-96 bg-white dark:bg-gray-800">
+    <DialogHeader>
+      <DialogTitle>{editingTask ? 'Edit Task' : 'Add Task'}</DialogTitle>
+      <DialogDescription>
+        {editingTask
+          ? 'Update your task details below.'
+          : 'Fill in the details for your new task.'}
+      </DialogDescription>
+    </DialogHeader>
 
-          <div class="flex items-center space-x-3">
-            <span class="text-sm text-gray-400">
-              {task.completed ? "✅ Done" : "⏳ Pending"}
-            </span>
-
-            <!-- Edit button -->
-            <button
-              on:click={() => openEditModal(task)}
-              class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            >
-              Edit
-            </button>
-          </div>
-        </li>
-      {/each}
-    </ul>
-  {/if}
-
-  {#if showAddTask}
     <AddTask
-      show={showAddTask}
       task={editingTask}
-      on:close={closeAddModal}
+      on:close={() => (showAddTask = false)}
       on:taskAdded={handleTaskAdded}
       on:taskUpdated={handleTaskUpdated}
     />
+  </DialogContent>
+</Dialog>
+
+
+  <!-- Task List -->
+  {#if $loading}
+    <p class="text-gray-500">Loading tasks...</p>
+  {:else if $tasks.length === 0}
+    <p class="text-gray-500">No tasks found.</p>
+  {:else}
+    <div class="space-y-3">
+      {#each $tasks as task (task._id)}
+        <Card>
+          <CardHeader class="flex justify-between items-center space-y-0 pb-2">
+            <div class="flex items-center space-x-2">
+              <Checkbox
+                checked={task.completed}
+                onCheckedChange={() => toggleCompleted(task)}
+              />
+              <CardTitle class={task.completed ? "line-through text-gray-500" : ""}>
+                {task.title}
+              </CardTitle>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <Badge variant={task.completed ? "default" : "outline"}>
+                {task.completed ? "✅ Done" : "⏳ Pending"}
+              </Badge>
+              <Button size="sm" onclick={() => openEditModal(task)}>Edit</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p class="text-sm text-gray-500">{task.description}</p>
+          </CardContent>
+        </Card>
+      {/each}
+    </div>
   {/if}
 </div>
