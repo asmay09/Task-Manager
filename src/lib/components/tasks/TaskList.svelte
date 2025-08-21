@@ -1,14 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { tasks, loading, loadTasks, toggleCompleted } from "$lib/stores/taskStore";
+  import { tasks, loading, loadTasks, toggleCompleted, filteredTasks, searchQuery, filterStatus } from "$lib/stores/taskStore";
+  import { theme, toggleTheme } from "$lib/stores/theme";
   import AddTask from "./AddTask.svelte";
   import type { Task } from "$lib/models/task";
 
   import { Button } from "$lib/components/ui/button";
+  import {Tabs, TabsList, TabsTrigger} from "$lib/components/ui/tabs"
   import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "$lib/components/ui/dialog";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { Card, CardHeader, CardTitle, CardContent } from "$lib/components/ui/card";
   import { Badge } from "$lib/components/ui/badge";
+	import { Input } from "../ui/input";
+	import { get } from "svelte/store";
 
   let showAddTask = false;
   let editingTask: Task | null = null;
@@ -26,6 +30,7 @@
     editingTask = task;
     showAddTask = true;
   }
+
 
   function closeAddModal() {
     showAddTask = false;
@@ -72,6 +77,28 @@
   </DialogContent>
 </Dialog>
 
+<div class="flex items-center justify-between gap-4 mb-4">
+    <!-- Search -->
+    <Input
+      placeholder="Search tasks..."
+      bind:value={$searchQuery}
+      class="max-w-sm"
+    />
+
+    <!-- Filters -->
+    <Tabs value={$filterStatus} onValueChange={(val) => filterStatus.set(val as typeof $filterStatus)}>
+      <TabsList>
+        <TabsTrigger value="all">All</TabsTrigger>
+        <TabsTrigger value="active">Active</TabsTrigger>
+        <TabsTrigger value="completed">Completed</TabsTrigger>
+      </TabsList>
+    </Tabs>
+
+     <Button onclick={toggleTheme} variant="outline">
+      Toggle Theme
+    </Button>
+  </div>
+
 
   <!-- Task List -->
   {#if $loading}
@@ -80,7 +107,7 @@
     <p class="text-gray-500">No tasks found.</p>
   {:else}
     <div class="space-y-3">
-      {#each $tasks as task (task._id)}
+      {#each $filteredTasks  as task (task._id)}
         <Card>
           <CardHeader class="flex justify-between items-center space-y-0 pb-2">
             <div class="flex items-center space-x-2">
