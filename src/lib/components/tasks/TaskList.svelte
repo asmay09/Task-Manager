@@ -44,7 +44,7 @@
 
   function handleTaskUpdated(event: CustomEvent<Task>) {
     const updated = event.detail;
-    tasks.update(current => current.map(t => t._id === updated._id ? updated : t));
+    tasks.update(current => current.map(t => t.id === updated.id ? updated : t));
     showAddTask = false;
   }
 </script>
@@ -107,7 +107,7 @@
     <p class="text-gray-500">No tasks found.</p>
   {:else}
     <div class="space-y-3">
-      {#each $filteredTasks  as task (task._id)}
+      {#each $filteredTasks  as task (task.id)}
         <Card>
           <CardHeader class="flex justify-between items-center space-y-0 pb-2">
             <div class="flex items-center space-x-2">
